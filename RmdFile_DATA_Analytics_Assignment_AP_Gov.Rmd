@@ -1,0 +1,170 @@
+---
+title: "Data_Analytics_Assgn_AndhraPradesh_gov"
+author: "Tushar H J"
+date: "February 15, 2018"
+output:
+  word_document: default
+  pdf_document: default
+---
+# Loading Required Libraries 
+```{r libraries}
+
+library(dplyr)
+library(ggplot2)
+library(openxlsx)
+library(stringr)
+```
+
+# Reading Data from Excel sheet (assignment.xlxs)
+```{r read xlxs}
+Master_sheet <- read.xlsx("C:/Users/user/Desktop/Data Science/Projects/Internshala/Andhra Pradesh/assignment.xlsx", sheet = 1)
+Data_sheet <- read.xlsx("C:/Users/user/Desktop/Data Science/Projects/Internshala/Andhra Pradesh/assignment.xlsx", sheet = 2)
+
+```
+
+#checking summary of data 
+```{r checking data}
+(head(Master_sheet))
+(summary(Master_sheet))
+(colnames(Master_sheet))
+
+(head(Data_sheet))
+```
+
+#Checking missing values in data 
+```{r missing values}
+sapply(Data_sheet,function(x)sum(is.na(x)))
+sapply(Master_sheet,function(x)sum(is.na(x)))
+
+
+```
+
+#converting all district names to upper case
+```{r }
+Data_sheet$District <- toupper(Data_sheet$District)
+table(Data_sheet$District)
+```
+
+# ANANTAPUR and ANANTHAPUR are same --> ANANTAPUR
+#CHITTOOR and CHITTOROR are same --> CHITTOOR
+```{r Data Cleaning}
+Data_sheet$District <- (str_trim(Data_sheet$District)) # removing whitespaces
+
+r = Data_sheet[, "District"] == "ANANTHAPUR"
+Data_sheet[r,"District"] = "ANANTAPUR"
+
+r = Data_sheet[, "District"] == "CHITTOROR"
+Data_sheet[r,"District"] = "CHITTOOR"
+
+table(Data_sheet$District)
+```
+
+##1. Compare Master Sheet with Data Sheet in the Assignment Work Book take UDISE Code 
+#as unique code for every school and fill enrollment for Data Sheet from Master Sheet
+```{r filling enrollment in Datasheet}
+COUNT = 1
+for (x in Data_sheet$School.UDISE.Code){
+r =  Master_sheet[,"SCHOOL.UDISE.CODE"] == x 
+Data_sheet[COUNT,"Enrollment"] <- Master_sheet[r,"Enrolment"]
+COUNT = COUNT +1 
+}
+(head(Data_sheet$Enrollment))
+```
+
+#2.Compare Master Sheet with Data Sheet in the Assignment Work Book take UDISE Code as
+#unique code for every school and fill School Category for Data Sheet from Master Sheet
+```{r }
+COUNT = 1
+for(x in Data_sheet$School.UDISE.Code){
+  r = Master_sheet[,"SCHOOL.UDISE.CODE"] == x
+  Data_sheet[COUNT, "School_Category"] <- Master_sheet[r, "SCHOOL.CATEGORY"]
+  COUNT = COUNT +1 
+}
+colnames(Data_sheet)
+```
+
+#3. Visualize the DATA Sheet portraying Parameters like how many schools per District, Total 
+#Impact in terms of enrollment per district, How many Primary , how many primary with Upper Primary,
+#how many upper primary with secondary schools overall (School Category)  
+
+
+# Number of schools per district 
+```{r  No. of Schools per district}
+
+Schools_District <- as.factor(Data_sheet$District)
+School_count_district <- Data_sheet %>% group_by(District) %>% summarise(Count = n())
+print(School_count_district)                          
+```
+
+#Plot for No. of Schools per district
+```{r BarPlot No. of Schools per district}
+ggplot(data = Data_sheet, aes(x = Data_sheet$District)) +
+  xlab("District")+
+  ggtitle("No. of Schools per district") +
+  stat_count() +
+  theme(axis.text.x = element_text(size  = 10,angle = 45, hjust = 1,vjust = 1))
+```  
+
+#Total Impact in terms of enrollment per district
+```{r  No. of Enrollments for each district}
+Enrol_District <- Data_sheet %>% 
+                  group_by(District) %>%
+                  summarise(Total_Enrollments = sum(Enrollment))
+
+Enrol_District = as.data.frame(Enrol_District)
+(Enrol_District)
+```
+
+#Plot of Enrollments for each district
+```{r Barplot of Enrollments for each district}
+
+ggplot(data = Enrol_District, aes(x=factor(Enrol_District$District), y = Enrol_District$Total_Enrollments))+
+  geom_bar(stat = 'identity')+
+  xlab("District")+
+  ylab("Total No. of Enrollments")+
+  ggtitle("No. of Enrollments per district") +
+  theme(axis.text = element_text(size = 10, angle = 45, hjust = 1, vjust = 1))
+```
+
+# Districtwise School categories 
+```{r School Categories}
+(School_cat_district <- Data_sheet %>%
+                       group_by(District) %>%
+                       summarise(Primary = sum(School_Category == '1-Primary'),
+                        Primary_Upper_Primary = sum(School_Category == "2-Primary with Upper Primary"),
+                        Upper_Prim_Secondary = sum(School_Category=="7-Upper Pr. and Secondary")                        ) 
+  )
+School_cat_district = as.data.frame(School_cat_district)
+(School_cat_district)
+```
+
+#Plot for District wise Primary Schools
+```{r barplot District wise Primary Schools}
+ggplot(data = School_cat_district, aes(x=factor(School_cat_district$District), y = School_cat_district$Primary))+
+  geom_bar(stat = 'identity')+
+  xlab("District")+
+  ylab("Count")+
+  ggtitle("District wise Primary Schools") +
+  theme(axis.text = element_text(size = 10, angle = 45, hjust = 1, vjust = 1))
+```
+
+#Plot for District wise Primary with upper Primary Schools
+```{r barplot District wise Primary with upper Primary Schools}
+ggplot(data = School_cat_district, aes(x=factor(School_cat_district$District), y = School_cat_district$Primary_Upper_Primary))+
+  geom_bar(stat = 'identity')+
+  xlab("District")+
+  ylab("Count")+
+  ggtitle("District wise Primary with upper Primary Schools") +
+  theme(axis.text = element_text(size = 10, angle = 45, hjust = 1, vjust = 1))
+```
+#Plot for District wise Upper Primary with Secondary Schools
+```{r barplot District wise Upper Primary with Secondary Schools}
+
+ggplot(data = School_cat_district, aes(x=factor(School_cat_district$District), y = School_cat_district$Upper_Prim_Secondary))+
+  geom_bar(stat = 'identity')+
+  xlab("District")+
+  ylab("Count")+
+  ggtitle("District wise Upper Primary with Secondary Schools") +
+  theme(axis.text = element_text(size = 10, angle = 45, hjust = 1, vjust = 1))
+
+```
